@@ -6,6 +6,27 @@
 
 所有的设计文档、计划、规范文档都应该写入 Obsidian vault 中对应的项目文件夹。
 
+**⚠️ 重要原则: 读取优先 (Read First)**
+
+在创建任何新文档之前，**必须先检查** Obsidian vault 中是否已有相关文档：
+
+1. **定位 Obsidian Vault**
+   ```bash
+   # 查找 .obsidian 配置目录
+   find ~ -type d -name ".obsidian" 2>/dev/null | head -5
+   ```
+
+2. **搜索现有文档**
+   ```bash
+   # 在项目目录下搜索相关文档
+   find /path/to/vault/Projects/six-sense-web -type f -name "*.md"
+   ```
+
+3. **读取现有文档**
+   - 如果找到相关文档，**必须先读取**内容
+   - 理解现有设计/计划后再决定下一步行动
+   - 避免重复创建或重复工作
+
 **文档存放路径规则:**
 - 设计文档: `Obsidian Vault/Projects/six-sense-web/designs/`
 - 实现计划: `Obsidian Vault/Projects/six-sense-web/plans/`
@@ -18,7 +39,7 @@
 - 示例: `2026-05-18-web-version-design.md`
 
 **Obsidian 元数据:**
-每个文档应包含 frontmatter:
+ frontmatter:
 ```yaml
 ---
 title: 文档标题
@@ -30,10 +51,31 @@ status: draft|in-progress|completed
 
 ### 文档创建流程
 
-1. 如果项目文件夹不存在,先创建: `Projects/six-sense-web/`
-2. 根据文档类型创建到对应子文件夹
-3. 使用 Obsidian 语法(wikilinks, callouts 等)
-4. 完成后更新 status 为 completed
+**必须按顺序执行:**
+
+1. **检查 Obsidian vault 位置**
+   ```bash
+   find ~ -type d -name ".obsidian" 2>/dev/null
+   ```
+
+2. **搜索现有文档**
+   ```bash
+   find /path/to/vault/Projects/six-sense-web -type f -name "*.md"
+   ```
+
+3. **读取相关文档**（如果存在）
+   - 使用 `Read` 工具读取文档内容
+   - 理解现有设计和决策
+   - 避免重复工作
+
+4. **创建新文档**（如果需要）
+   - 如果项目文件夹不存在,先创建: `Projects/six-sense-web/`
+   - 根据文档类型创建到对应子文件夹
+   - 使用 Obsidian 语法(wikilinks, callouts 等)
+   - 使用 `Write` 工具直接写入文件（不需要 obsidian-cli）
+
+5. **更新文档状态**
+   - 完成后更新 frontmatter 中的 status 为 completed
 
 ## 项目信息
 
@@ -52,8 +94,8 @@ status: draft|in-progress|completed
 3. **流式体验**: AI 分析结果实时显示,可中断
 4. **渐进增强**: MVP 先实现核心功能,逐步迭代
 
-## 代码复用
+## 参考资料
 
-- 复用现有 Python 脚本的核心逻辑 (`scripts/six_sense.py`, `insights_analyzer.py`)
-- 复用现有的 prompt 模板 (`templates/insights_prompt_template.md`)
-- 保持与原有脚本版本的数据格式兼容性(通过导入/导出)
+- **1.0 版本仓库**: https://github.com/aka-xubo/six-sense
+- **设计文档**: 查看 Obsidian vault 中的 `Projects/six-sense-web/designs/`
+- **实现计划**: 查看 Obsidian vault 中的 `Projects/six-sense-web/plans/`
