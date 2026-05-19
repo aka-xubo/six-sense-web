@@ -91,7 +91,7 @@ export default function AgentDropdown({ agents, selectedAgent, onSelect }: Agent
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+          className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100]"
         >
           {agents.map((agent) => (
             <button
