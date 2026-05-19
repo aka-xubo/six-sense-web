@@ -6,6 +6,7 @@ interface PageListProps {
   groups: PageDateGroup[]
   loading: boolean
   agents: AgentInfo[]
+  selectedAgent: string | null
   onAnalyzeComplete?: () => void
   onBlacklist?: (pageId: number, type: BlacklistType, pattern?: string) => Promise<void>
   onLastGroupCollapsedChange?: (collapsed: boolean) => void
@@ -15,6 +16,7 @@ export default function PageList({
   groups,
   loading,
   agents,
+  selectedAgent,
   onAnalyzeComplete,
   onBlacklist,
   onLastGroupCollapsedChange
@@ -93,6 +95,7 @@ export default function PageList({
                     key={page.id}
                     page={page}
                     agents={agents}
+                    selectedAgent={selectedAgent}
                     onAnalyzeComplete={onAnalyzeComplete}
                     onBlacklist={onBlacklist}
                   />

@@ -27,6 +27,23 @@ function App() {
   const [lastGroupCollapsed, setLastGroupCollapsed] = useState(false)
   const { pages, groups, total, loading, hasMore, loadMore, refetch } = usePages(searchQuery, dateFrom, dateTo)
   const { agents } = useAgents()
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+
+  // Initialize selected agent from localStorage or first available
+  useEffect(() => {
+    if (agents.length === 0) return
+
+    const saved = localStorage.getItem('six-sense:selected-agent')
+    if (saved && agents.some(a => a.name === saved && a.available)) {
+      setSelectedAgent(saved)
+    } else {
+      const firstAvailable = agents.find(a => a.available)
+      if (firstAvailable) {
+        setSelectedAgent(firstAvailable.name)
+        localStorage.setItem('six-sense:selected-agent', firstAvailable.name)
+      }
+    }
+  }, [agents])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -147,6 +164,11 @@ function App() {
     }
   }
 
+  const handleAgentSelect = (agentName: string) => {
+    setSelectedAgent(agentName)
+    localStorage.setItem('six-sense:selected-agent', agentName)
+  }
+
   const loadedTimeRange = (() => {
     if (pages.length === 0) return null
 
@@ -173,6 +195,9 @@ function App() {
         dateTo={dateTo}
         syncing={syncing}
         lastSyncTime={lastSyncTime}
+        agents={agents}
+        selectedAgent={selectedAgent}
+        onAgentSelect={handleAgentSelect}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -193,6 +218,7 @@ function App() {
               groups={groups}
               loading={loading && pages.length === 0}
               agents={agents}
+              selectedAgent={selectedAgent}
               onAnalyzeComplete={handleAnalyzeComplete}
               onBlacklist={handleBlacklistPage}
               onLastGroupCollapsedChange={setLastGroupCollapsed}

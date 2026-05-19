@@ -59,7 +59,8 @@ export default function AgentDropdown({ agents, selectedAgent, onSelect }: Agent
       >
         {selectedAgentInfo ? (
           <>
-            <span className="text-base">{getAgentIcon(selectedAgentInfo.name)}</spa       <span>{selectedAgentInfo.display_name}</span>
+            <span className="text-base">{getAgentIcon(selectedAgentInfo.name)}</span>
+            <span>{selectedAgentInfo.display_name}</span>
             <span
               className={`inline-block w-2 h-2 rounded-full ${
                 selectedAgentInfo.available ? 'bg-green-500' : 'bg-gray-400'

@@ -1,4 +1,6 @@
 import { formatRelativeTime } from '../utils/time'
+import AgentDropdown from './AgentDropdown'
+import type { AgentInfo } from '../types'
 
 interface HeaderProps {
   onSync: () => void
@@ -12,6 +14,9 @@ interface HeaderProps {
   dateTo: string
   syncing: boolean
   lastSyncTime: string | null
+  agents: AgentInfo[]
+  selectedAgent: string | null
+  onAgentSelect: (agentName: string) => void
 }
 
 export default function Header({
@@ -25,7 +30,10 @@ export default function Header({
   dateFrom,
   dateTo,
   syncing,
-  lastSyncTime
+  lastSyncTime,
+  agents,
+  selectedAgent,
+  onAgentSelect
 }: HeaderProps) {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -40,6 +48,11 @@ export default function Header({
                 最近同步：{formatRelativeTime(lastSyncTime)}
               </span>
             )}
+            <AgentDropdown
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelect={onAgentSelect}
+            />
             <button
               onClick={onSync}
               disabled={syncing}

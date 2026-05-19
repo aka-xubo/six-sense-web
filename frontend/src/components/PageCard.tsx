@@ -1,30 +1,35 @@
 import type { Page, AgentInfo, BlacklistType } from '../types'
 import { formatRelativeTime } from '../utils/time'
 import { useState } from 'react'
-import AgentSelector from './AgentSelector'
 import StreamingText from './StreamingText'
 import { useAnalyze } from '../hooks/useAnalyze'
 
 interface PageCardProps {
   page: Page
   agents: AgentInfo[]
+  selectedAgent: string | null
   onAnalyzeComplete?: () => void
   onBlacklist?: (pageId: number, type: BlacklistType, pattern?: string) => Promise<void>
 }
 
-export default function PageCard({ page, agents, onAnalyzeComplete, onBlacklist }: PageCardProps) {
-  const [showAgentSelector, setShowAgentSelector] = useState(false)
+export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplete, onBlacklist }: PageCardProps) {
   const [showBlacklistMenu, setShowBlacklistMenu] = useState(false)
   const [blacklisting, setBlacklisting] = useState(false)
   const { analyzing, streamText, error, analyze, reset } = useAnalyze()
 
   const handleAnalyzeClick = () => {
-    setShowAgentSelector(true)
-  }
+    if (!selectedAgent) {
+      alert('请先在页面顶部选择一个 AI Agent')
+      return
+    }
 
-  const handleAgentSelect = (agentName: string) => {
-    setShowAgentSelector(false)
-    analyze(page.id, agentName, () => {
+    const selectedAgentInfo = agents.find(a => a.name === selectedAgent)
+    if (!selectedAgentInfo?.available) {
+      alert('当前选中的 Agent 不可用，请选择其他 Agent')
+      return
+    }
+
+    analyze(page.id, selectedAgent, () => {
       onAnalyzeComplete?.()
     })
   }
@@ -182,14 +187,6 @@ export default function PageCard({ page, agents, onAnalyzeComplete, onBlacklist 
         </div>
       </div>
 
-      {/* Agent Selector Modal */}
-      {showAgentSelector && (
-        <AgentSelector
-          agents={agents}
-          onSelect={handleAgentSelect}
-          onClose={() => setShowAgentSelector(false)}
-        />
-      )}
     </div>
   )
 }
