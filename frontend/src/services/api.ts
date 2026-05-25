@@ -1,7 +1,21 @@
 /** API client for Six Sense Web backend */
-import type { BlacklistListResponse, BlacklistResponse, BlacklistType, PageGroupListResponse, PageListResponse, SyncResponse, AgentsResponse, Page } from '../types'
+import type { AgentsResponse, BlacklistListResponse, BlacklistResponse, BlacklistType, DomainListResponse, DomainSort, Page, PageGroupListResponse, PageListResponse, SyncResponse } from '../types'
 
 const API_BASE = '/api'
+
+async function throwApiError(response: Response, fallbackMessage: string): Promise<never> {
+  let message = fallbackMessage
+  try {
+    const body = await response.json()
+    if (body?.detail) {
+      message = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
+    }
+  } catch {
+    const text = await response.text().catch(() => '')
+    if (text) message = text
+  }
+  throw new Error(message)
+}
 
 export const api = {
   // Pages
@@ -30,6 +44,7 @@ export const api = {
 
   async getPageGroups(params?: {
     q?: string
+    domain?: string
     cursor?: string | null
     dateFrom?: string
     dateTo?: string
@@ -37,6 +52,7 @@ export const api = {
   }): Promise<PageGroupListResponse> {
     const searchParams = new URLSearchParams()
     if (params?.q) searchParams.set('q', params.q)
+    if (params?.domain) searchParams.set('domain', params.domain)
     if (params?.cursor) searchParams.set('cursor', params.cursor)
     if (params?.dateFrom) searchParams.set('date_from', params.dateFrom)
     if (params?.dateTo) searchParams.set('date_to', params.dateTo)
@@ -44,6 +60,15 @@ export const api = {
 
     const response = await fetch(`${API_BASE}/page-groups?${searchParams}`)
     if (!response.ok) throw new Error('Failed to fetch page groups')
+    return response.json()
+  },
+
+  async getDomains(sort: DomainSort = 'recent'): Promise<DomainListResponse> {
+    const searchParams = new URLSearchParams()
+    searchParams.set('sort', sort)
+
+    const response = await fetch(`${API_BASE}/domains?${searchParams}`)
+    if (!response.ok) throw new Error('Failed to fetch domains')
     return response.json()
   },
 
@@ -66,7 +91,7 @@ export const api = {
     const response = await fetch(`${API_BASE}/blacklist/pages/${pageId}?${searchParams}`, {
       method: 'POST'
     })
-    if (!response.ok) throw new Error('Failed to add page to blacklist')
+    if (!response.ok) await throwApiError(response, 'Failed to add page to blacklist')
     return response.json()
   },
 

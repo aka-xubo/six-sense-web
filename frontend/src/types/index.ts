@@ -3,9 +3,17 @@
 export interface Page {
   id: number
   url: string
+  canonical_url?: string | null
+  canonical_key?: string | null
   title: string
   domain: string
+  day_count: number
   visit_count: number
+  is_bookmarked: boolean
+  bookmark_title?: string | null
+  bookmark_folder?: string | null
+  bookmark_added_at?: string | null
+  is_github_starred: boolean
   last_visit_time: string
   first_visit_time: string
   created_at: string
@@ -20,6 +28,10 @@ export interface Insights {
   summary: string
   type: string
   keywords: string[]
+  user_intent?: string | null
+  key_points?: string[]
+  value?: string | null
+  next_action?: string | null
   agent_name: string
   analyzed_at: string
   expires_at: string
@@ -42,6 +54,19 @@ export interface PageGroupListResponse {
   total: number
   has_more: boolean
   next_cursor: string | null
+}
+
+export type DomainSort = 'recent' | 'visits'
+
+export interface DomainSummary {
+  domain: string
+  page_count: number
+  visit_count: number
+  last_visit_time: string
+}
+
+export interface DomainListResponse {
+  domains: DomainSummary[]
 }
 
 export interface SyncResponse {

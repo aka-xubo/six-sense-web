@@ -5,9 +5,10 @@ import PageList from './components/PageList'
 import BlacklistManager from './components/BlacklistManager'
 import { usePages } from './hooks/usePages'
 import { useAgents } from './hooks/useAgents'
+import { useDomains } from './hooks/useDomains'
 import { api } from './services/api'
 import { formatShortDate } from './utils/time'
-import type { BlacklistEntry, BlacklistType } from './types'
+import type { BlacklistEntry, BlacklistType, DomainSort } from './types'
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -21,12 +22,19 @@ function App() {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
     return localStorage.getItem('six-sense:last-sync-time')
   })
+  const [selectedDomain, setSelectedDomain] = useState(() => {
+    return localStorage.getItem('six-sense:selected-domain') || ''
+  })
+  const [domainSort, setDomainSort] = useState<DomainSort>(() => {
+    return localStorage.getItem('six-sense:domain-sort') === 'visits' ? 'visits' : 'recent'
+  })
   const lastAutoLoadScrollYRef = useRef(0)
   const lastAutoLoadAtRef = useRef(0)
   const autoLoadArmedRef = useRef(true)
   const [lastGroupCollapsed, setLastGroupCollapsed] = useState(false)
-  const { pages, groups, total, loading, hasMore, loadMore, refetch } = usePages(searchQuery, dateFrom, dateTo)
-  const { agents } = useAgents()
+  const { pages, groups, total, loading, hasMore, loadMore, refreshPage, refetch } = usePages(searchQuery, dateFrom, dateTo, selectedDomain)
+  const { agents, loading: agentsLoading, error: agentsError, refresh: refreshAgents } = useAgents()
+  const { domains, loading: domainsLoading, error: domainsError, refresh: refreshDomains } = useDomains(domainSort)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
 
   // Initialize selected agent from localStorage or first available
@@ -34,16 +42,27 @@ function App() {
     if (agents.length === 0) return
 
     const saved = localStorage.getItem('six-sense:selected-agent')
-    if (saved && agents.some(a => a.name === saved && a.available)) {
+    const savedAgent = saved ? agents.find(a => a.name === saved) : null
+    const currentAgent = selectedAgent ? agents.find(a => a.name === selectedAgent) : null
+
+    if (currentAgent?.available) {
+      return
+    }
+
+    if (savedAgent?.available) {
       setSelectedAgent(saved)
     } else {
       const firstAvailable = agents.find(a => a.available)
       if (firstAvailable) {
         setSelectedAgent(firstAvailable.name)
         localStorage.setItem('six-sense:selected-agent', firstAvailable.name)
+      } else if (savedAgent) {
+        setSelectedAgent(savedAgent.name)
+      } else {
+        setSelectedAgent(null)
       }
     }
-  }, [agents])
+  }, [agents, selectedAgent])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,12 +97,20 @@ function App() {
     }
   }, [hasMore, loading, lastGroupCollapsed, loadMore])
 
+  useEffect(() => {
+    autoLoadArmedRef.current = true
+    lastAutoLoadScrollYRef.current = 0
+    lastAutoLoadAtRef.current = 0
+    setLastGroupCollapsed(false)
+  }, [searchQuery, dateFrom, dateTo, selectedDomain])
+
   const handleSync = async () => {
     setSyncing(true)
     try {
       const response = await api.sync(2)
       setLastSyncTime(response.sync_time)
       localStorage.setItem('six-sense:last-sync-time', response.sync_time)
+      await refreshDomains()
       await refetch()
     } catch (error) {
       console.error('Sync failed:', error)
@@ -148,25 +175,39 @@ function App() {
     setDateTo('')
   }
 
-  const handleAnalyzeComplete = () => {
-    // Refresh page list after analysis completes
-    refetch()
+  const handleAnalyzeComplete = (pageId: number) => {
+    refreshPage(pageId)
   }
 
   const handleBlacklistPage = async (pageId: number, type: BlacklistType, pattern?: string) => {
     try {
       const response = await api.blacklistPage(pageId, type, pattern)
       await refetch()
-      alert(`已加入黑名单，并隐藏 ${response.hidden_pages} 条历史记录`)
+      alert(`已加入黑名单，当前共隐藏 ${response.hidden_pages} 条历史记录`)
     } catch (error) {
       console.error('Add blacklist failed:', error)
-      alert('加入黑名单失败，请检查后端服务是否正常运行')
+      const message = error instanceof Error ? error.message : '请检查后端服务是否正常运行'
+      alert(`加入黑名单失败：${message}`)
     }
   }
 
   const handleAgentSelect = (agentName: string) => {
     setSelectedAgent(agentName)
     localStorage.setItem('six-sense:selected-agent', agentName)
+  }
+
+  const handleDomainSelect = (domain: string) => {
+    setSelectedDomain(domain)
+    if (domain) {
+      localStorage.setItem('six-sense:selected-domain', domain)
+    } else {
+      localStorage.removeItem('six-sense:selected-domain')
+    }
+  }
+
+  const handleDomainSortChange = (sort: DomainSort) => {
+    setDomainSort(sort)
+    localStorage.setItem('six-sense:domain-sort', sort)
   }
 
   const loadedTimeRange = (() => {
@@ -190,14 +231,25 @@ function App() {
         onDateFromChange={handleDateFromChange}
         onDateToChange={handleDateToChange}
         onClearDateRange={handleClearDateRange}
+        onDomainSelect={handleDomainSelect}
+        onDomainSortChange={handleDomainSortChange}
         searchQuery={searchQuery}
         dateFrom={dateFrom}
         dateTo={dateTo}
+        selectedDomain={selectedDomain}
+        domains={domains}
+        domainSort={domainSort}
+        domainsLoading={domainsLoading}
+        domainsError={domainsError}
+        onDomainsRefresh={refreshDomains}
         syncing={syncing}
         lastSyncTime={lastSyncTime}
         agents={agents}
         selectedAgent={selectedAgent}
         onAgentSelect={handleAgentSelect}
+        agentsLoading={agentsLoading}
+        agentsError={agentsError}
+        onAgentsRefresh={refreshAgents}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -210,6 +262,7 @@ function App() {
                 显示 {pages.length} / {total} 个页面
                 {loadedTimeRange && ` · 时间：${loadedTimeRange}`}
                 {searchQuery && ` · 搜索 "${searchQuery}"`}
+                {selectedDomain && ` · 域名：${selectedDomain}`}
                 {(dateFrom || dateTo) && ` · 日期条件：${dateFrom || '最早'} 至 ${dateTo || '最新'}`}
               </div>
             )}

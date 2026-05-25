@@ -629,7 +629,7 @@ git commit -m "refactor: remove unused AgentSelector component"
 
 ```bash
 # Terminal 1 - Backend
-cd backend && uvicorn app.main:app --reload
+cd backend-go && GOCACHE=/private/tmp/go-build go run ./cmd/server
 
 # Terminal 2 - Frontend
 cd frontend && npm run dev

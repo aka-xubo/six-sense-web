@@ -7,7 +7,7 @@ interface PageListProps {
   loading: boolean
   agents: AgentInfo[]
   selectedAgent: string | null
-  onAnalyzeComplete?: () => void
+  onAnalyzeComplete?: (pageId: number) => void
   onBlacklist?: (pageId: number, type: BlacklistType, pattern?: string) => Promise<void>
   onLastGroupCollapsedChange?: (collapsed: boolean) => void
 }
@@ -65,12 +65,12 @@ export default function PageList({
         const collapsed = collapsedGroups.has(group.date_key)
 
         return (
-          <section key={group.date_key} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <section key={group.date_key} className="bg-white rounded-lg shadow-sm border border-gray-200">
             {/* 日期标题 */}
             <button
               type="button"
               onClick={() => toggleGroup(group.date_key)}
-              className="flex w-full items-center justify-between gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="flex w-full items-center justify-between gap-4 rounded-t-lg bg-gray-50 px-6 py-3 text-left hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
               aria-expanded={!collapsed}
             >
               <span className="flex min-w-0 items-center gap-2">

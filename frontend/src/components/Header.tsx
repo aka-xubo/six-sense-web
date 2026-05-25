@@ -1,6 +1,7 @@
 import { formatRelativeTime } from '../utils/time'
 import AgentDropdown from './AgentDropdown'
-import type { AgentInfo } from '../types'
+import DomainDropdown from './DomainDropdown'
+import type { AgentInfo, DomainSort, DomainSummary } from '../types'
 
 interface HeaderProps {
   onSync: () => void
@@ -9,14 +10,25 @@ interface HeaderProps {
   onDateFromChange: (date: string) => void
   onDateToChange: (date: string) => void
   onClearDateRange: () => void
+  onDomainSelect: (domain: string) => void
+  onDomainSortChange: (sort: DomainSort) => void
   searchQuery: string
   dateFrom: string
   dateTo: string
+  selectedDomain: string
+  domains: DomainSummary[]
+  domainSort: DomainSort
+  domainsLoading?: boolean
+  domainsError?: string | null
+  onDomainsRefresh?: () => void
   syncing: boolean
   lastSyncTime: string | null
   agents: AgentInfo[]
   selectedAgent: string | null
   onAgentSelect: (agentName: string) => void
+  agentsLoading?: boolean
+  agentsError?: string | null
+  onAgentsRefresh?: () => void
 }
 
 export default function Header({
@@ -26,23 +38,34 @@ export default function Header({
   onDateFromChange,
   onDateToChange,
   onClearDateRange,
+  onDomainSelect,
+  onDomainSortChange,
   searchQuery,
   dateFrom,
   dateTo,
+  selectedDomain,
+  domains,
+  domainSort,
+  domainsLoading = false,
+  domainsError = null,
+  onDomainsRefresh,
   syncing,
   lastSyncTime,
   agents,
   selectedAgent,
-  onAgentSelect
+  onAgentSelect,
+  agentsLoading = false,
+  agentsError = null,
+  onAgentsRefresh
 }: HeaderProps) {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
             Six Sense
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
             {lastSyncTime && (
               <span className="text-xs text-gray-500 whitespace-nowrap">
                 最近同步：{formatRelativeTime(lastSyncTime)}
@@ -52,6 +75,9 @@ export default function Header({
               agents={agents}
               selectedAgent={selectedAgent}
               onSelect={onAgentSelect}
+              loading={agentsLoading}
+              error={agentsError}
+              onRefresh={onAgentsRefresh}
             />
             <button
               onClick={onSync}
@@ -125,6 +151,18 @@ export default function Header({
               清空日期
             </button>
           )}
+          <div className="ml-auto">
+            <DomainDropdown
+              domains={domains}
+              selectedDomain={selectedDomain}
+              sort={domainSort}
+              loading={domainsLoading}
+              error={domainsError}
+              onSelect={onDomainSelect}
+              onSortChange={onDomainSortChange}
+              onRefresh={onDomainsRefresh}
+            />
+          </div>
         </div>
       </div>
     </header>

@@ -2,32 +2,38 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
 import type { PageDateGroup, PageGroupListResponse } from '../types'
 
-export function usePages(searchQuery: string = '', dateFrom: string = '', dateTo: string = '') {
+export function usePages(searchQuery: string = '', dateFrom: string = '', dateTo: string = '', domain: string = '') {
   const [groups, setGroups] = useState<PageDateGroup[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
-  const fetchingRef = useRef(false)
+  const activeQueryKeyRef = useRef('')
+  const inFlightRequestsRef = useRef<Set<string>>(new Set())
   const lastInitialFetchKeyRef = useRef<string | null>(null)
 
   const groupLimit = dateFrom || dateTo ? 7 : 1
+  const queryKey = JSON.stringify({ searchQuery, dateFrom, dateTo, domain, groupLimit })
 
   const fetchPages = useCallback(async (cursor: string | null = null, append: boolean = false) => {
-    if (fetchingRef.current) return
-    fetchingRef.current = true
+    const requestKey = JSON.stringify({ queryKey, cursor, append })
+    if (inFlightRequestsRef.current.has(requestKey)) return
+    inFlightRequestsRef.current.add(requestKey)
 
     setLoading(true)
     setError(null)
     try {
       const response: PageGroupListResponse = await api.getPageGroups({
         q: searchQuery || undefined,
+        domain: domain || undefined,
         cursor,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         limit: groupLimit
       })
+
+      if (activeQueryKeyRef.current !== queryKey) return
 
       if (append) {
         setGroups(prev => [...prev, ...response.groups])
@@ -40,12 +46,15 @@ export function usePages(searchQuery: string = '', dateFrom: string = '', dateTo
       setNextCursor(response.next_cursor)
 
     } catch (err) {
+      if (activeQueryKeyRef.current !== queryKey) return
       setError(err instanceof Error ? err.message : 'Failed to fetch pages')
     } finally {
-      fetchingRef.current = false
-      setLoading(false)
+      inFlightRequestsRef.current.delete(requestKey)
+      if (activeQueryKeyRef.current === queryKey) {
+        setLoading(false)
+      }
     }
-  }, [searchQuery, dateFrom, dateTo, groupLimit])
+  }, [searchQuery, dateFrom, dateTo, domain, groupLimit, queryKey])
 
   const loadMore = useCallback(() => {
     if (!loading && hasMore && nextCursor) {
@@ -53,13 +62,32 @@ export function usePages(searchQuery: string = '', dateFrom: string = '', dateTo
     }
   }, [loading, hasMore, nextCursor, fetchPages])
 
+  const refreshPage = useCallback(async (pageId: number) => {
+    const requestQueryKey = queryKey
+    try {
+      const updatedPage = await api.getPage(pageId)
+      if (activeQueryKeyRef.current !== requestQueryKey) return
+
+      setGroups(prev => prev.map(group => ({
+        ...group,
+        pages: group.pages.map(page => page.id === pageId ? updatedPage : page)
+      })))
+    } catch (err) {
+      if (activeQueryKeyRef.current !== requestQueryKey) return
+      setError(err instanceof Error ? err.message : 'Failed to refresh page')
+    }
+  }, [queryKey])
+
   useEffect(() => {
-    const fetchKey = JSON.stringify({ searchQuery, dateFrom, dateTo })
-    if (lastInitialFetchKeyRef.current === fetchKey) return
-    lastInitialFetchKeyRef.current = fetchKey
+    if (lastInitialFetchKeyRef.current === queryKey) return
+    lastInitialFetchKeyRef.current = queryKey
+    activeQueryKeyRef.current = queryKey
+    setGroups([])
+    setTotal(0)
+    setHasMore(true)
     setNextCursor(null)
     fetchPages(null, false)
-  }, [searchQuery, dateFrom, dateTo, fetchPages])
+  }, [queryKey, fetchPages])
 
   const pages = groups.flatMap(group => group.pages)
 
@@ -71,6 +99,7 @@ export function usePages(searchQuery: string = '', dateFrom: string = '', dateTo
     error,
     hasMore,
     loadMore,
+    refreshPage,
     refetch: () => fetchPages(null, false)
   }
 }

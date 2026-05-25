@@ -1,14 +1,16 @@
 import type { Page, AgentInfo, BlacklistType } from '../types'
 import { formatRelativeTime } from '../utils/time'
+import { formatVisitCount, getVisitCountBadgeClass } from '../utils/visitCount'
 import { useState } from 'react'
 import StreamingText from './StreamingText'
 import { useAnalyze } from '../hooks/useAnalyze'
+import AgentIcon from './AgentIcon'
 
 interface PageCardProps {
   page: Page
   agents: AgentInfo[]
   selectedAgent: string | null
-  onAnalyzeComplete?: () => void
+  onAnalyzeComplete?: (pageId: number) => void
   onBlacklist?: (pageId: number, type: BlacklistType, pattern?: string) => Promise<void>
 }
 
@@ -16,8 +18,9 @@ export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplet
   const [showBlacklistMenu, setShowBlacklistMenu] = useState(false)
   const [blacklisting, setBlacklisting] = useState(false)
   const { analyzing, streamText, error, analyze, reset } = useAnalyze()
+  const displayUrl = page.canonical_url || page.url
 
-  const handleAnalyzeClick = () => {
+  const startAnalyze = (force = false) => {
     if (!selectedAgent) {
       alert('请先在页面顶部选择一个 AI Agent')
       return
@@ -30,8 +33,16 @@ export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplet
     }
 
     analyze(page.id, selectedAgent, () => {
-      onAnalyzeComplete?.()
-    })
+      onAnalyzeComplete?.(page.id)
+    }, force)
+  }
+
+  const handleAnalyzeClick = () => {
+    startAnalyze(false)
+  }
+
+  const handleReanalyzeClick = () => {
+    startAnalyze(true)
   }
 
   const getPathPattern = () => {
@@ -64,7 +75,7 @@ export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplet
   }
 
   return (
-    <div className="px-6 py-4 hover:bg-gray-50 transition-colors">
+    <div className="relative px-6 py-4 hover:bg-gray-50 transition-colors">
       <div className="flex items-start space-x-3">
         {/* Favicon */}
         <img
@@ -82,47 +93,113 @@ export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplet
           <div className="mb-1">
             <div className="min-w-0">
               <a
-                href={page.url}
+                href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate"
               >
                 {page.title}
               </a>
-              <div className="flex items-center gap-x-2 gap-y-0.5 mt-0.5 flex-wrap">
-                <span className="text-xs text-gray-500 truncate">{page.domain}</span>
-                <span className="text-xs text-gray-400">·</span>
-                <span className="text-xs text-gray-500">{page.visit_count} 次访问</span>
-                <span className="text-xs text-gray-400">·</span>
-                <span className="text-xs text-gray-500">{formatRelativeTime(page.last_visit_time)}</span>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="max-w-[18rem] truncate text-xs text-gray-500">{page.domain}</span>
+                {page.is_bookmarked && (
+                  <span
+                    className="inline-flex h-5 items-center rounded border border-yellow-200 bg-yellow-50 px-1.5 text-xs font-medium text-yellow-700"
+                    title={page.bookmark_folder ? `收藏于 ${page.bookmark_folder}` : '已收藏'}
+                  >
+                    收藏
+                  </span>
+                )}
+                {page.is_github_starred && (
+                  <span className="inline-flex h-5 items-center rounded border border-purple-200 bg-purple-50 px-1.5 text-xs font-medium text-purple-700">
+                    已 Star
+                  </span>
+                )}
+                <span className={getVisitCountBadgeClass(page.day_count)}>
+                  当天 {formatVisitCount(page.day_count)} 次
+                </span>
+                <span className={getVisitCountBadgeClass(page.visit_count)}>
+                  累计 {formatVisitCount(page.visit_count)} 次
+                </span>
+                <span className="inline-flex h-5 items-center rounded border border-gray-200 bg-white px-1.5 text-xs text-gray-500">
+                  最近 {formatRelativeTime(page.last_visit_time)}
+                </span>
               </div>
               <div className="mt-0.5 text-xs text-gray-400 break-all">
-                {page.url}
+                {displayUrl}
               </div>
             </div>
           </div>
 
           {/* Insights 或分析按钮 */}
           {page.has_insights && page.insights && !analyzing ? (
-            <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-100">
-              <div className="text-sm text-gray-700 mb-2">
-                📝 {page.insights.summary}
+            <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 p-3">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium leading-5 text-gray-800">
+                    {page.insights.summary}
+                  </div>
+                  {page.insights.user_intent && (
+                    <div className="mt-1 text-xs leading-5 text-gray-600">
+                      意图：{page.insights.user_intent}
+                    </div>
+                  )}
+                </div>
+                <span className="inline-flex items-center pt-0.5" aria-label={`由 ${page.insights.agent_name} 分析`}>
+                  <AgentIcon agentName={page.insights.agent_name} className="h-4 w-4" showFallbackText />
+                </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2 flex-wrap">
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+
+              {page.insights.key_points && page.insights.key_points.length > 0 && (
+                <ul className="mb-2 space-y-1 text-xs leading-5 text-gray-700">
+                  {page.insights.key_points.map((point, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-blue-400" />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {(page.insights.value || page.insights.next_action) && (
+                <div className="mb-2 grid gap-1 text-xs leading-5 text-gray-600 sm:grid-cols-2">
+                  {page.insights.value && (
+                    <div>
+                      <span className="font-medium text-gray-700">价值：</span>
+                      {page.insights.value}
+                    </div>
+                  )}
+                  {page.insights.next_action && (
+                    <div>
+                      <span className="font-medium text-gray-700">下一步：</span>
+                      {page.insights.next_action}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-blue-100 px-2 py-0.5 text-blue-700">
                     {page.insights.type}
                   </span>
                   {page.insights.keywords.map((keyword, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                    <span key={idx} className="rounded bg-gray-100 px-2 py-0.5 text-gray-600">
                       {keyword}
                     </span>
                   ))}
                 </div>
-                <span className="text-gray-500">
-                  {page.insights.agent_name}
+                <span className="text-gray-400">
+                  {new Date(page.insights.analyzed_at).toLocaleDateString()}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={handleReanalyzeClick}
+                className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 focus:outline-none"
+              >
+                重新分析
+              </button>
             </div>
           ) : analyzing ? (
             <div className="mt-2">
@@ -157,7 +234,7 @@ export default function PageCard({ page, agents, selectedAgent, onAnalyzeComplet
                   {blacklisting ? '加入中...' : '加入黑名单'}
                 </button>
                 {showBlacklistMenu && (
-                  <div className="absolute left-0 z-10 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+                  <div className="absolute left-0 z-50 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
                     <button
                       type="button"
                       onClick={() => handleBlacklistClick('url')}

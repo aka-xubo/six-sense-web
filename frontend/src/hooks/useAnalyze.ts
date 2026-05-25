@@ -17,7 +17,7 @@ export function useAnalyze() {
     insights: null
   })
 
-  const analyze = (pageId: number, agentName: string, onComplete?: () => void) => {
+  const analyze = (pageId: number, agentName: string, onComplete?: () => void, force = false) => {
     let receivedServerError = false
 
     setState({
@@ -30,7 +30,7 @@ export function useAnalyze() {
 
     // Create EventSource for SSE
     const eventSource = new EventSource(
-      `/api/analyze?page_id=${pageId}&agent_name=${agentName}`
+      `/api/analyze?page_id=${pageId}&agent_name=${agentName}&force=${force ? 'true' : 'false'}`
     )
 
     eventSource.addEventListener('status', (e) => {
