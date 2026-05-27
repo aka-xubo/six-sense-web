@@ -23,7 +23,7 @@ func TestHealthAndListEndpoints(t *testing.T) {
 	defer st.Close()
 
 	detector := services.NewAgentDetector()
-	adapter, err := services.NewAgentAdapter(detector, filepath.Join("..", "..", "..", "backend", "templates", "insights_prompt_template.md"))
+	adapter, err := services.NewAgentAdapter(detector, filepath.Join("..", "..", "templates", "insights_prompt_template.md"))
 	if err != nil {
 		t.Fatalf("agent adapter: %v", err)
 	}

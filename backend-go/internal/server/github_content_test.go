@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"six-sense-web/backend/internal/models"
+	"six-sense-web/backend/internal/services"
 )
 
 func TestGitHubReadmeCandidatesPreferReadmeOverRepositoryHTML(t *testing.T) {
@@ -39,5 +41,26 @@ func TestGitHubReadmeCandidatesPreferVisitedReadmeVariant(t *testing.T) {
 
 	if got[0] != want {
 		t.Fatalf("first candidate = %q, want %q", got[0], want)
+	}
+}
+
+func TestFetchAnalysisContentDoesNotFallbackToGitHubMetadata(t *testing.T) {
+	canonicalURL := "https://github.com/multica-ai/andrej-karpathy-skills"
+	page := &models.Page{
+		URL:          "https://github.com/multica-ai/andrej-karpathy-skills",
+		CanonicalURL: &canonicalURL,
+		Title:        "andrej-karpathy-skills",
+		Domain:       "github.com",
+	}
+	app := &Server{fetcher: services.NewPageFetcher()}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	analysisURL, content, ok := app.fetchAnalysisContent(ctx, page)
+	if ok {
+		t.Fatalf("fetchAnalysisContent ok = true, url = %q, content = %q", analysisURL, content)
+	}
+	if analysisURL != "" || content != "" {
+		t.Fatalf("fetchAnalysisContent returned url = %q, content = %q; want empty values", analysisURL, content)
 	}
 }

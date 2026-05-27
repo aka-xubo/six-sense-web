@@ -14,6 +14,7 @@ import (
 
 const maxContentLength = 50000
 const maxTextLength = 30000
+const minExtractedTextRunes = 20
 
 type PageFetcher struct {
 	client *http.Client
@@ -61,10 +62,10 @@ func (f *PageFetcher) FetchContent(ctx context.Context, rawURL string) (string, 
 			return limitContent(extracted), true
 		}
 	}
-	if extracted := extractReadableText(rawURL, content); extracted != "" {
+	if extracted := extractReadableText(rawURL, content); hasEnoughReadableText(extracted) {
 		return limitContent(extracted), true
 	}
-	return limitContent(content), true
+	return "", false
 }
 
 func isWechatURL(rawURL string) bool {
@@ -115,12 +116,13 @@ func extractReadableText(rawURL string, content string) string {
 		parts = append(parts, "Description: "+decodeHTMLEntities(desc))
 	}
 	text := htmlToText(content)
-	if text != "" {
-		if len(text) > maxTextLength {
-			text = text[:maxTextLength]
-		}
-		parts = append(parts, "Content:\n"+text)
+	if !hasEnoughReadableText(text) {
+		return ""
 	}
+	if len(text) > maxTextLength {
+		text = text[:maxTextLength]
+	}
+	parts = append(parts, "Content:\n"+text)
 	return strings.Join(parts, "\n\n")
 }
 
@@ -191,4 +193,12 @@ func limitContent(content string) string {
 		return content[:maxContentLength]
 	}
 	return content
+}
+
+func hasEnoughReadableText(content string) bool {
+	text := strings.TrimSpace(content)
+	if text == "" {
+		return false
+	}
+	return len([]rune(text)) >= minExtractedTextRunes
 }

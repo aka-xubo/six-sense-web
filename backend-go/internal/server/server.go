@@ -380,9 +380,6 @@ func (s *Server) fetchAnalysisContent(ctx context.Context, page *models.Page) (s
 			return candidate, content, true
 		}
 	}
-	if isGitHubPage(page) {
-		return pageDisplayURL(page), buildGitHubFallbackContent(page), true
-	}
 	return "", "", false
 }
 
@@ -492,21 +489,6 @@ func cleanPathSegments(path string) []string {
 
 func isReadmeFile(filename string) bool {
 	return strings.HasPrefix(strings.ToLower(filename), "readme")
-}
-
-func buildGitHubFallbackContent(page *models.Page) string {
-	parts := []string{
-		"URL: " + pageDisplayURL(page),
-		"Original URL: " + page.URL,
-		"Title: " + page.Title,
-		"Domain: " + page.Domain,
-		fmt.Sprintf("Visits today: %d", page.DayCount),
-		fmt.Sprintf("Total visits: %d", page.VisitCount),
-		"First visit time: " + page.FirstVisitTime,
-		"Last visit time: " + page.LastVisitTime,
-		"Content note: GitHub page content could not be fetched by the local backend. Analyze this record using the repository URL, page title, and browsing metadata.",
-	}
-	return strings.Join(parts, "\n")
 }
 
 func intQuery(raw string, fallback int, minValue int, maxValue int) int {
